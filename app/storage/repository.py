@@ -51,7 +51,9 @@ class Repository:
 
     def get_lead(self, lead_id: str) -> Lead | None:
         with self._connect() as conn:
-            row = conn.execute("SELECT payload FROM leads WHERE id = ?", (lead_id,)).fetchone()
+            row = conn.execute(
+                "SELECT payload FROM leads WHERE id = ?", (lead_id,)
+            ).fetchone()
         return Lead.model_validate_json(row["payload"]) if row else None
 
     def add_message(self, message: Message) -> Message:
@@ -83,3 +85,25 @@ class Repository:
                     datetime.now(timezone.utc).isoformat(),
                 ),
             )
+
+    def audit_history(self, lead_id: str, limit: int = 100) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT event, payload, created_at
+                FROM audit_log
+                WHERE lead_id = ?
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (lead_id, limit),
+            ).fetchall()
+
+        return [
+            {
+                "event": row["event"],
+                "payload": json.loads(row["payload"]),
+                "created_at": row["created_at"],
+            }
+            for row in reversed(rows)
+        ]
