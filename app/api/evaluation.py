@@ -1,7 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from app.evaluation.harness import EvaluationHarness, SCENARIOS
-from app.api.main import agent
 
 router = APIRouter(prefix="/v1/evaluation", tags=["evaluation"])
 
@@ -12,8 +11,8 @@ async def scenarios():
 
 
 @router.post("/run/{scenario_id}")
-async def run_scenario(scenario_id: str):
+async def run_scenario(scenario_id: str, request: Request):
     scenario = next((s for s in SCENARIOS if s.id == scenario_id), None)
     if not scenario:
         return {"error": "scenario_not_found"}
-    return await EvaluationHarness(agent).run(scenario)
+    return await EvaluationHarness(request.app.state.agent).run(scenario)
